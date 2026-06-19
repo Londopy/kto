@@ -11,6 +11,7 @@
 #define UNICODE
 #endif
 #include <windows.h>
+#include <commctrl.h>   // InitCommonControls
 #include <string>
 #include <vector>
 #include "resource.h"
