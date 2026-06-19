@@ -84,12 +84,11 @@ jobs:
         run: choco install innosetup -y --no-progress
 
       - name: Build installer
-        shell: bash
+        shell: pwsh
         run: |
-          V="${{ steps.ver.outputs.version }}"
-          ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
-          SRC="$(cygpath -w "$(pwd)/dist/${{ steps.stage.outputs.dir }}")"
-          "$ISCC" "/DMyAppVersion=$V" "/DMyArch=${{ matrix.arch }}" "/DArchAllowed=${{ matrix.arch_allowed }}" "/DArch64=${{ matrix.arch_64 }}" "/DSourceDir=$SRC" installer/kto.iss
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          $src  = "${{ github.workspace }}\dist\${{ steps.stage.outputs.dir }}"
+          & $iscc "/DMyAppVersion=${{ steps.ver.outputs.version }}" "/DMyArch=${{ matrix.arch }}" "/DArchAllowed=${{ matrix.arch_allowed }}" "/DArch64=${{ matrix.arch_64 }}" "/DSourceDir=$src" "installer/kto.iss"
 
       - name: Checksums
         shell: bash
