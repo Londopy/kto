@@ -1,0 +1,55 @@
+# KTO configuration - full schema with defaults.
+# Copy to ~/.config/kto/config.toml (or %APPDATA%\kto\config.toml on Windows),
+# or generate it with `kto --save-config`.
+
+[interface]
+default_iface = "wlan0mon"
+auto_monitor  = false
+
+[scan]
+duration       = 8.0
+sweep_interval = 5.0
+channel_hop    = false
+hop_dwell_ms   = 100
+
+[deauth]
+count       = 5
+delay       = 0.1
+broadcast   = false
+use_aireplay = false
+reason_code = 7
+aggressive  = false
+
+[output]
+log_file         = ""
+auto_export_json = false
+auto_export_html = false
+export_dir       = "~/.local/share/kto/sessions"
+
+[notifications]
+enabled          = true
+new_client       = true
+client_kicked    = false   # off by default - too noisy
+handshake        = true
+rogue_ap         = true
+update_available = true
+kill_streak      = true
+
+[discord]
+enabled        = false
+obfuscate_ssid = false
+
+[update]
+check_on_startup = true
+skip_version     = ""
+
+[ui]
+default_mode = "tui"   # "cli" | "tui" | "gui"
+theme        = "dark"
+live_table   = false
+
+[fun]
+kill_streaks  = true
+xp_system     = true
+sounds        = false   # terminal bell on kick
+boss_mode_key = "F12"

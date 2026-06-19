@@ -1,0 +1,256 @@
+//! Self-contained HTML session report.
+//!
+//! Everything (CSS, a tiny sort script, and hand-rolled inline SVG charts) is
+//! embedded in a single file - no network, no external assets. The palette
+//! matches the TUI `dark` theme.
+
+use std::collections::BTreeMap;
+use std::path::Path;
+
+use super::SessionReport;
+use crate::util::time;
+
+fn esc(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+/// Render the report to a complete HTML document string.
+pub fn to_string(report: &SessionReport) -> String {
+    let dur = (report.session_end - report.session_start).num_seconds().max(0) as u64;
+    let bssid = report
+        .target
+        .bssid
+        .map(|b| b.to_string())
+        .unwrap_or_else(|| "-".into());
+    let channel = report.target.channel.map(|c| c.to_string()).unwrap_or_else(|| "-".into());
+
+    let rows = report
+        .clients
+        .iter()
+        .map(|c| {
+            format!(
+                "<tr><td>{mac}</td><td>{vendor}</td><td>{os}</td><td>{nick}</td>\
+                 <td data-sort=\"{rssi}\">{rssi} dBm</td><td data-sort=\"{kicks}\">{kicks}</td>\
+                 <td>{probes}</td></tr>",
+                mac = esc(&c.mac.to_string()),
+                vendor = esc(c.vendor.as_deref().unwrap_or("-")),
+                os = esc(c.os_guess.as_deref().unwrap_or("-")),
+                nick = esc(c.nickname.as_deref().unwrap_or("-")),
+                rssi = c.rssi_avg,
+                kicks = c.kick_count,
+                probes = esc(&c.probe_ssids.join(", ")),
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let kick_chart = svg_bar_chart(
+        report.clients.iter().map(|c| (c.display_label(), c.kick_count as f64)).collect(),
+        "Kicks per client",
+    );
+
+    let vendor_chart = svg_bar_chart(vendor_distribution(report), "Vendor distribution");
+
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KTO Session Report - {ssid}</title>
+<style>
+  :root {{ --bg:#1a1a2e; --panel:#16213e; --primary:#e94560; --accent:#0f3460; --text:#e6e6e6; --muted:#8892b0; }}
+  * {{ box-sizing:border-box; }}
+  body {{ margin:0; background:var(--bg); color:var(--text); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; }}
+  header {{ padding:24px 32px; border-bottom:2px solid var(--primary); }}
+  h1 {{ margin:0 0 4px; font-size:22px; color:var(--primary); letter-spacing:1px; }}
+  .sub {{ color:var(--muted); font-size:13px; }}
+  main {{ padding:24px 32px; max-width:1100px; }}
+  .cards {{ display:flex; gap:16px; flex-wrap:wrap; margin:16px 0 28px; }}
+  .card {{ background:var(--panel); border:1px solid var(--accent); border-radius:8px; padding:16px 20px; min-width:150px; }}
+  .card .n {{ font-size:28px; color:var(--primary); }}
+  .card .l {{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }}
+  table {{ width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }}
+  th,td {{ text-align:left; padding:8px 10px; border-bottom:1px solid var(--accent); }}
+  th {{ color:var(--muted); cursor:pointer; user-select:none; position:sticky; top:0; background:var(--bg); }}
+  th:hover {{ color:var(--primary); }}
+  tr:hover td {{ background:rgba(233,69,96,0.06); }}
+  .charts {{ display:flex; gap:32px; flex-wrap:wrap; margin:28px 0; }}
+  .chart h2 {{ font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }}
+  footer {{ padding:16px 32px; color:var(--muted); font-size:11px; border-top:1px solid var(--accent); }}
+</style>
+</head>
+<body>
+<header>
+  <h1>KTO v{version} - Session Report</h1>
+  <div class="sub">SSID <b>{ssid}</b> · BSSID {bssid} · ch {channel} · {enc} · duration {dur}</div>
+</header>
+<main>
+  <div class="cards">
+    <div class="card"><div class="n">{kicks}</div><div class="l">Total kicks</div></div>
+    <div class="card"><div class="n">{uniq}</div><div class="l">Unique clients</div></div>
+    <div class="card"><div class="n">{hs}</div><div class="l">Handshakes</div></div>
+    <div class="card"><div class="n">{pmkid}</div><div class="l">PMKIDs</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart"><h2>Kicks per client</h2>{kick_chart}</div>
+    <div class="chart"><h2>Vendor distribution</h2>{vendor_chart}</div>
+  </div>
+
+  <h2 style="color:var(--muted);font-size:14px;letter-spacing:1px;">CLIENTS</h2>
+  <table id="clients">
+    <thead><tr>
+      <th onclick="sortBy(0,false)">MAC</th>
+      <th onclick="sortBy(1,false)">Vendor</th>
+      <th onclick="sortBy(2,false)">OS guess</th>
+      <th onclick="sortBy(3,false)">Nickname</th>
+      <th onclick="sortBy(4,true)">Signal</th>
+      <th onclick="sortBy(5,true)">Kicks</th>
+      <th onclick="sortBy(6,false)">Probe SSIDs</th>
+    </tr></thead>
+    <tbody>
+{rows}
+    </tbody>
+  </table>
+</main>
+<footer>Generated by KTO v{version}. For authorized testing only.</footer>
+<script>
+function sortBy(col, numeric) {{
+  var tb = document.querySelector('#clients tbody');
+  var rows = Array.from(tb.rows);
+  var dir = tb.getAttribute('data-dir-' + col) === 'asc' ? -1 : 1;
+  tb.setAttribute('data-dir-' + col, dir === 1 ? 'asc' : 'desc');
+  rows.sort(function(a, b) {{
+    var x = a.cells[col], y = b.cells[col];
+    var av = numeric ? parseFloat(x.getAttribute('data-sort')) : x.textContent.toLowerCase();
+    var bv = numeric ? parseFloat(y.getAttribute('data-sort')) : y.textContent.toLowerCase();
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
+  }});
+  rows.forEach(function(r) {{ tb.appendChild(r); }});
+}}
+</script>
+</body>
+</html>"#,
+        ssid = esc(&report.target.ssid),
+        version = esc(&report.kto_version),
+        bssid = esc(&bssid),
+        channel = esc(&channel),
+        enc = esc(&report.target.encryption),
+        dur = time::hms(dur),
+        kicks = report.summary.total_kicks,
+        uniq = report.summary.unique_clients,
+        hs = report.summary.handshakes_captured,
+        pmkid = report.summary.pmkids_captured,
+        kick_chart = kick_chart,
+        vendor_chart = vendor_chart,
+        rows = rows,
+    )
+}
+
+/// Write the HTML report to `path`.
+pub fn write(report: &SessionReport, path: &Path) -> anyhow::Result<()> {
+    std::fs::write(path, to_string(report))?;
+    Ok(())
+}
+
+/// Tally clients by vendor for the distribution chart.
+fn vendor_distribution(report: &SessionReport) -> Vec<(String, f64)> {
+    let mut counts: BTreeMap<String, f64> = BTreeMap::new();
+    for c in &report.clients {
+        *counts.entry(c.vendor.clone().unwrap_or_else(|| "Unknown".into())).or_insert(0.0) += 1.0;
+    }
+    counts.into_iter().collect()
+}
+
+/// Hand-rolled inline SVG horizontal bar chart. No external dependencies.
+fn svg_bar_chart(mut data: Vec<(String, f64)>, _title: &str) -> String {
+    if data.is_empty() {
+        return "<div class=\"sub\">no data</div>".into();
+    }
+    data.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    data.truncate(8);
+    let max = data.iter().map(|(_, v)| *v).fold(1.0_f64, f64::max);
+    let row_h = 26;
+    let width = 360;
+    let label_w = 120;
+    let bar_max = (width - label_w - 50) as f64;
+    let height = data.len() as i32 * row_h + 10;
+
+    let mut bars = String::new();
+    for (i, (label, value)) in data.iter().enumerate() {
+        let y = i as i32 * row_h + 8;
+        let w = (value / max * bar_max).round() as i32;
+        bars.push_str(&format!(
+            "<text x=\"0\" y=\"{ty}\" fill=\"#8892b0\" font-size=\"11\">{label}</text>\
+             <rect x=\"{label_w}\" y=\"{ry}\" width=\"{w}\" height=\"14\" fill=\"#e94560\" rx=\"2\"/>\
+             <text x=\"{vx}\" y=\"{ty}\" fill=\"#e6e6e6\" font-size=\"11\">{value}</text>",
+            ty = y + 12,
+            label = esc(&truncate(label, 16)),
+            label_w = label_w,
+            ry = y + 2,
+            w = w.max(1),
+            vx = label_w + w + 6,
+            value = *value as i64,
+        ));
+    }
+    format!(
+        "<svg width=\"{width}\" height=\"{height}\" viewBox=\"0 0 {width} {height}\" \
+         xmlns=\"http://www.w3.org/2000/svg\" font-family=\"monospace\">{bars}</svg>"
+    )
+}
+
+fn truncate(s: &str, n: usize) -> String {
+    if s.chars().count() <= n {
+        s.to_string()
+    } else {
+        let mut t: String = s.chars().take(n.saturating_sub(1)).collect();
+        t.push('…');
+        t
+    }
+}
+
+impl super::ClientRecord {
+    /// Short label for charts: nickname -> vendor -> short MAC.
+    fn display_label(&self) -> String {
+        self.nickname
+            .clone()
+            .or_else(|| self.vendor.clone())
+            .unwrap_or_else(|| self.mac.short())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::config::Config;
+    use crate::app::state::{AppState, Client, Target};
+    use crate::util::MacAddr;
+
+    #[test]
+    fn html_contains_expected_strings() {
+        let mut st = AppState::new(Config::default());
+        let mut t = Target::new("CorpNet");
+        t.bssid = Some("AA:BB:CC:DD:EE:FF".parse().unwrap());
+        t.channel = Some(6);
+        t.encryption = "WPA2".into();
+        let mac: MacAddr = "11:22:33:44:55:66".parse().unwrap();
+        let mut c = Client::new(mac, -62);
+        c.vendor = Some("Apple".into());
+        c.kick_count = 12;
+        t.clients.insert(mac, c);
+        st.targets.push(t);
+
+        let report = SessionReport::from_state(&st);
+        let html = to_string(&report);
+        assert!(html.contains("<!DOCTYPE html>"));
+        assert!(html.contains("CorpNet"));
+        assert!(html.contains("11:22:33:44:55:66"));
+        assert!(html.contains("<svg"));
+    }
+}

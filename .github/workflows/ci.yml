@@ -1,0 +1,30 @@
+name: ci
+
+# Fast checks on every branch push and PR. Release builds live in release.yml
+# (those only run on version tags).
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: rust test (linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --all-targets
+
+  gui:
+    name: c++ gui build (windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S gui-cpp -B gui-cpp/build -A x64
+      - run: cmake --build gui-cpp/build --config Release

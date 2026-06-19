@@ -1,0 +1,40 @@
+{
+    "version": "3.0.0",
+    "description": "KTO - WiFi deauthentication tool for authorized pen-testing",
+    "homepage": "https://github.com/Londopy/kto",
+    "license": "MIT",
+    "notes": [
+        "Authorized testing only. The default build ships the CLI/TUI and does not",
+        "require Npcap. If you build the optional `radio` feature, install Npcap:",
+        "  scoop install npcap"
+    ],
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/Londopy/kto/releases/download/v3.0.0/kto-3.0.0-x86_64-pc-windows-msvc.zip",
+            "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+            "extract_dir": "kto-3.0.0-x86_64-pc-windows-msvc"
+        }
+    },
+    "bin": [
+        "kto.exe",
+        "kto-gui.exe"
+    ],
+    "checkver": "github",
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/Londopy/kto/releases/download/v$version/kto-$version-x86_64-pc-windows-msvc.zip",
+                "extract_dir": "kto-$version-x86_64-pc-windows-msvc"
+            }
+        },
+        "hash": {
+            "url": "https://github.com/Londopy/kto/releases/download/v$version/kto-$version-SHA256SUMS.txt"
+        }
+    },
+    "shortcuts": [
+        [
+            "kto-gui.exe",
+            "KTO"
+        ]
+    ]
+}

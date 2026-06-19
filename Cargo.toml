@@ -1,0 +1,86 @@
+[package]
+name        = "kto"
+version     = "3.0.0"
+edition     = "2021"
+rust-version = "1.74"
+authors     = ["Londopy"]
+description = "KTO - WiFi deauthentication tool for authorized pen-testing"
+repository  = "https://github.com/Londopy/kto"
+license     = "MIT"
+readme      = "README.md"
+
+# NOTE: edition is pinned to 2021 (not the spec's 2024) so the crate builds on
+# stable toolchains. Bump to 2024 once your CI image ships Rust >= 1.85.
+
+[[bin]]
+name = "kto"
+path = "src/main.rs"
+
+[features]
+default       = ["tui", "notifications", "discord"]
+tui           = ["dep:ratatui", "dep:crossterm"]
+notifications = ["dep:notify-rust"]
+# Enables the live radio path (pcap capture/inject). OFF by default: the
+# offensive internals ship as stubs in this tree - see src/engine/ABI_NOTE.md.
+radio         = ["dep:pcap", "dep:pnet", "dep:pnet_packet"]
+discord       = ["dep:discord-rpc-client"]
+
+[dependencies]
+# Core
+clap               = { version = "4",  features = ["derive", "env"] }
+anyhow             = "1"
+thiserror          = "1"
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+parking_lot        = "0.12"
+crossbeam-channel  = "0.5"
+
+# Serialization
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml       = "0.8"
+
+# HTTP / update check
+reqwest = { version = "0.12", default-features = false, features = ["json", "blocking", "rustls-tls"] }
+semver  = "1"
+
+# Time
+chrono    = { version = "0.4", features = ["serde"] }
+humantime = "2"
+
+# Misc
+rand          = "0.8"
+unicode-width = "0.1"
+console       = "0.15"
+csv           = "1"
+hex           = "0.4"
+dirs          = "5"
+
+# Network (optional - `radio` feature)
+pcap        = { version = "2",    optional = true }
+pnet        = { version = "0.35", optional = true }
+pnet_packet = { version = "0.35", optional = true }
+
+# OS notifications (optional)
+notify-rust = { version = "4", optional = true }
+
+# Discord Rich Presence (optional)
+discord-rpc-client = { version = "0.4", optional = true }
+
+# TUI (optional)
+ratatui   = { version = "0.28", optional = true }
+crossterm = { version = "0.28", optional = true }
+
+
+[build-dependencies]
+# Embeds the app icon + version info into the Windows .exe.
+winresource = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto       = true
+strip     = true
+opt-level = 3
+codegen-units = 1
