@@ -29,7 +29,7 @@ enum { TAB_RUN = 0, TAB_CMD = 1, TAB_SETTINGS = 2, TAB_WIKI = 3 };
 enum {
     ID_TABS = 900,
     ID_IFACE = 1001, ID_TARGET, ID_MODE, ID_SIM, ID_START, ID_SCAN, ID_NETLIST,
-    ID_CMD, ID_CMDRUN,
+    ID_CMDBOX, ID_CMDRUN,
     ID_DARK, ID_TRAY, ID_STARTUP,
     ID_WIKI, ID_LOG, ID_STOP, ID_CLEAR,
     IDM_TRAY_RESTORE = 1500, IDM_TRAY_QUIT,
@@ -402,7 +402,7 @@ static void create_controls() {
 
     // --- Command tab ---
     page(TAB_CMD, L"STATIC", L"kto", SS_LEFT, 8, 52, 28, 20, 0);
-    g_cmd = page(TAB_CMD, L"EDIT", L"--simulate -t CorpNet --no-tui --no-color", WS_BORDER | ES_AUTOHSCROLL, 40, 50, 560, 24, ID_CMD);
+    g_cmd = page(TAB_CMD, L"EDIT", L"--simulate -t CorpNet --no-tui --no-color", WS_BORDER | ES_AUTOHSCROLL, 40, 50, 560, 24, ID_CMDBOX);
     page(TAB_CMD, L"BUTTON", L"Run", BS_PUSHBUTTON, 610, 48, 80, 28, ID_CMDRUN);
     page(TAB_CMD, L"STATIC", L"Type kto flags then Run. See the Wiki tab, or run 'kto --help' in a console.", SS_LEFT, 8, 84, 680, 18, 0);
 
