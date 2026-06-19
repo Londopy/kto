@@ -89,9 +89,7 @@ jobs:
           V="${{ steps.ver.outputs.version }}"
           ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
           SRC="$(cygpath -w "$(pwd)/dist/${{ steps.stage.outputs.dir }}")"
-          "$ISCC" "/DMyAppVersion=$V" "/DMyArch=${{ matrix.arch }}" \
-                  "/DArchAllowed=${{ matrix.arch_allowed }}" "/DArch64=${{ matrix.arch_64 }}" \
-                  "/DSourceDir=$SRC" installer/kto.iss
+          "$ISCC" "/DMyAppVersion=$V" "/DMyArch=${{ matrix.arch }}" "/DArchAllowed=${{ matrix.arch_allowed }}" "/DArch64=${{ matrix.arch_64 }}" "/DSourceDir=$SRC" installer/kto.iss
 
       - name: Checksums
         shell: bash
