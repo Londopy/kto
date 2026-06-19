@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 enable_language(RC)
 
 add_executable(kto-gui WIN32 main.cpp app.rc)
-target_link_libraries(kto-gui PRIVATE comctl32 advapi32 user32 gdi32 shell32)
+target_link_libraries(kto-gui PRIVATE comctl32 advapi32 user32 gdi32 shell32 dwmapi)
 set_target_properties(kto-gui PROPERTIES OUTPUT_NAME "kto-gui")
 
 if(MSVC)

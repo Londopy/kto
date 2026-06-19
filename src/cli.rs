@@ -195,6 +195,11 @@ pub struct Args {
     #[arg(long)]
     pub simulate: bool,
 
+    /// List nearby networks (SSID, BSSID, channel, RSSI - one per line) and exit.
+    /// Used by the GUI to fill the clickable network picker.
+    #[arg(long)]
+    pub list_networks: bool,
+
     // ----- STYLE -----------------------------------------------------------
     /// Color theme.
     #[arg(long, value_enum)]

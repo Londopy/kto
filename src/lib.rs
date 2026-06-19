@@ -59,6 +59,11 @@ pub fn run_with_args(args: Args) {
         return;
     }
 
+    if args.list_networks {
+        print_networks();
+        return;
+    }
+
     // ----- config ----------------------------------------------------------
     let cfg_path = args
         .config
@@ -242,6 +247,22 @@ fn spawn_update_check(shared: app::state::Shared, config: Config) {
             notifier.handle(&notify::NotificationEvent::UpdateAvailable { version });
         }
     });
+}
+
+fn print_networks() {
+    // Sample networks for the GUI picker (SSID, BSSID, channel, RSSI). Real
+    // scanning lives behind the stubbed radio path, so this is demo data.
+    let nets = [
+        ("CorpNet", "AA:BB:CC:DD:EE:FF", 6, -52),
+        ("CorpNet-Guest", "AA:BB:CC:DD:EE:F0", 6, -58),
+        ("eduroam", "11:22:33:44:55:66", 11, -67),
+        ("Starbucks WiFi", "66:77:88:99:AA:BB", 1, -71),
+        ("NETGEAR47", "C0:FF:EE:12:34:56", 3, -74),
+        ("Hidden", "00:11:22:33:44:55", 9, -80),
+    ];
+    for (ssid, bssid, ch, rssi) in nets {
+        println!("{ssid}\t{bssid}\t{ch}\t{rssi}");
+    }
 }
 
 fn fake_scan_then_404() {

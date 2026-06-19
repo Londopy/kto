@@ -41,7 +41,7 @@ serde_json = "1"
 toml       = "0.8"
 
 # HTTP / update check
-reqwest = { version = "0.12", default-features = false, features = ["json", "blocking", "native-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "blocking", "rustls-tls"] }
 semver  = "1"
 
 # Time
