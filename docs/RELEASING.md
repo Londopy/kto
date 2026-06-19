@@ -12,14 +12,14 @@ Releases are fully automated by [`.github/workflows/release.yml`](../.github/wor
    git push origin v3.0.0
    ```
 
-3. The `release` workflow runs and, on success, publishes a GitHub release with:
-   - `kto-<ver>-x86_64-unknown-linux-gnu.tar.gz`
-   - `kto-<ver>-aarch64-unknown-linux-gnu.tar.gz`
-   - `kto-<ver>-x86_64-apple-darwin.tar.gz`
-   - `kto-<ver>-aarch64-apple-darwin.tar.gz`
-   - `kto-<ver>-x86_64-pc-windows-msvc.zip`  (contains `kto.exe` + `kto-gui.exe`)
-   - `kto-<ver>-setup-x64.exe`  (Inno Setup installer)
-   - `kto-<ver>-SHA256SUMS.txt`  (combined SHA-256 checksums for every asset)
+3. The `release` workflow runs and, on success, publishes a GitHub release with,
+   for each Windows arch (`x64`, `x86`, `arm64`):
+   - `kto-<ver>-windows-<arch>.zip`  (contains `kto.exe` + `kto-gui.exe`)
+   - `kto-<ver>-setup-<arch>.exe`  (Inno Setup installer)
+   plus one `kto-<ver>-SHA256SUMS.txt` covering every file.
+
+   `x64` is the main build; `x86` and `arm64` are marked experimental, so if one
+   of them fails it won't block the release.
 
 `workflow_dispatch` is also available for dry runs (it builds but does not
 publish, since the publish job is gated on a tag).

@@ -1,8 +1,8 @@
 name: release
 
-# Builds release binaries for Linux/macOS/Windows, packages them, builds a
-# Windows .exe installer with Inno Setup, generates SHA-256 checksums, and
-# publishes a GitHub release. Triggered by pushing a `vX.Y.Z` tag.
+# Builds Windows binaries (x64 / x86 / ARM64), a GUI + installer for each,
+# SHA-256 checksums, and publishes a GitHub release. Triggered by a vX.Y.Z tag.
+# x86 and ARM64 are marked experimental so they can never block the x64 release.
 
 on:
   push:
@@ -20,32 +20,17 @@ env:
   BIN_NAME: kto
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Build + package one archive per target.
-  # ---------------------------------------------------------------------------
   build:
-    name: build (${{ matrix.target }})
-    runs-on: ${{ matrix.os }}
+    name: build (windows ${{ matrix.arch }})
+    runs-on: windows-latest
+    continue-on-error: ${{ matrix.experimental == true }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            ext: tar.gz
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            ext: tar.gz
-            cross: true
-          - os: macos-13
-            target: x86_64-apple-darwin
-            ext: tar.gz
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            ext: tar.gz
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            ext: zip
+          - { arch: x64,   target: x86_64-pc-windows-msvc,  cmake_platform: x64,   arch_allowed: x64compatible, arch_64: x64compatible }
+          - { arch: x86,   target: i686-pc-windows-msvc,    cmake_platform: Win32, arch_allowed: x86compatible, arch_64: "",            experimental: true }
+          - { arch: arm64, target: aarch64-pc-windows-msvc, cmake_platform: ARM64, arch_allowed: arm64,         arch_64: arm64,         experimental: true }
     steps:
       - uses: actions/checkout@v4
 
@@ -61,7 +46,7 @@ jobs:
             V="$(grep -m1 '^version' Cargo.toml | sed -E 's/.*"(.*)".*/\1/')"
           fi
           echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "asset=${BIN_NAME}-$V-${{ matrix.target }}" >> "$GITHUB_OUTPUT"
+          echo "asset=${BIN_NAME}-$V-windows-${{ matrix.arch }}" >> "$GITHUB_OUTPUT"
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -73,106 +58,27 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
-      - name: Install cross
-        if: matrix.cross
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cross
+      - name: Build (kto.exe)
+        shell: bash
+        run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Build
+      - name: Build C++ GUI
         shell: bash
         run: |
-          if [ "${{ matrix.cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }}
-          else
-            cargo build --release --target ${{ matrix.target }}
-          fi
-
-      - name: Build C++ GUI (Windows)
-        if: matrix.os == 'windows-latest'
-        shell: bash
-        run: |
-          cmake -S gui-cpp -B gui-cpp/build -A x64
+          cmake -S gui-cpp -B gui-cpp/build -A ${{ matrix.cmake_platform }}
           cmake --build gui-cpp/build --config Release
 
-      - name: Package
-        id: pkg
+      - name: Stage files
+        id: stage
         shell: bash
         run: |
           DIR="${{ steps.ver.outputs.asset }}"
-          EXE=""
-          [ "${{ matrix.os }}" = "windows-latest" ] && EXE=".exe"
-          mkdir -p "stage/$DIR"
-          cp "target/${{ matrix.target }}/release/${BIN_NAME}${EXE}" "stage/$DIR/"
-          cp README.md LICENSE CHANGELOG.md "stage/$DIR/"
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then cp gui-cpp/build/Release/kto-gui.exe "stage/$DIR/"; fi
-          cd stage
-          if [ "${{ matrix.ext }}" = "zip" ]; then
-            7z a "../${DIR}.zip" "$DIR" >/dev/null
-            echo "file=${DIR}.zip" >> "$GITHUB_OUTPUT"
-          else
-            tar czf "../${DIR}.tar.gz" "$DIR"
-            echo "file=${DIR}.tar.gz" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Checksum
-        shell: bash
-        run: |
-          FILE="${{ steps.pkg.outputs.file }}"
-          if command -v sha256sum >/dev/null 2>&1; then
-            sha256sum "$FILE" > "$FILE.sha256"
-          else
-            shasum -a 256 "$FILE" > "$FILE.sha256"
-          fi
-          cat "$FILE.sha256"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-${{ matrix.target }}
-          path: |
-            ${{ steps.pkg.outputs.file }}
-            ${{ steps.pkg.outputs.file }}.sha256
-          if-no-files-found: error
-
-  # ---------------------------------------------------------------------------
-  # Build the Windows .exe installer from the windows zip.
-  # ---------------------------------------------------------------------------
-  installer:
-    name: windows installer
-    needs: build
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Resolve version
-        id: ver
-        shell: bash
-        run: |
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            V="${GITHUB_REF_NAME#v}"
-          elif [ -n "${{ github.event.inputs.version }}" ]; then
-            V="${{ github.event.inputs.version }}"
-          else
-            V="$(grep -m1 '^version' Cargo.toml | sed -E 's/.*"(.*)".*/\1/')"
-          fi
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-
-      - name: Download windows artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-x86_64-pc-windows-msvc
-          path: artifact
-
-      - name: Stage files for installer
-        shell: bash
-        run: |
-          mkdir -p dist unz
-          7z x artifact/${BIN_NAME}-*-x86_64-pc-windows-msvc.zip -ounz >/dev/null
-          cp unz/*/${BIN_NAME}.exe dist/
-          cp unz/*/kto-gui.exe dist/
-          cp README.md LICENSE CHANGELOG.md dist/
-          cp assets/icon.ico dist/
+          mkdir -p "dist/$DIR"
+          cp "target/${{ matrix.target }}/release/${BIN_NAME}.exe" "dist/$DIR/"
+          cp gui-cpp/build/Release/kto-gui.exe "dist/$DIR/"
+          cp README.md LICENSE CHANGELOG.md assets/icon.ico "dist/$DIR/"
+          ( cd dist && 7z a "$DIR.zip" "$DIR" >/dev/null )
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
 
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
@@ -182,31 +88,33 @@ jobs:
         run: |
           V="${{ steps.ver.outputs.version }}"
           ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
-          # Inno resolves relative paths against the .iss dir, so pass an absolute one.
-          SRC="$(cygpath -w "$(pwd)/dist")"
-          "$ISCC" "/DMyAppVersion=$V" "/DSourceDir=$SRC" installer/kto.iss
+          SRC="$(cygpath -w "$(pwd)/dist/${{ steps.stage.outputs.dir }}")"
+          "$ISCC" "/DMyAppVersion=$V" "/DMyArch=${{ matrix.arch }}" \
+                  "/DArchAllowed=${{ matrix.arch_allowed }}" "/DArch64=${{ matrix.arch_64 }}" \
+                  "/DSourceDir=$SRC" installer/kto.iss
 
-      - name: Checksum installer
+      - name: Checksums
         shell: bash
         run: |
-          cd installer/installer-out
-          for f in *.exe; do sha256sum "$f" > "$f.sha256"; cat "$f.sha256"; done
+          cd dist
+          for f in *.zip; do sha256sum "$f" > "$f.sha256"; done
+          cp ../installer/installer-out/*.exe . 2>/dev/null || true
+          for f in *.exe; do [ -f "$f" ] && sha256sum "$f" > "$f.sha256"; done
+          ls -la
 
-      - name: Upload installer artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dist-installer
+          name: dist-${{ matrix.arch }}
           path: |
-            installer/installer-out/*.exe
-            installer/installer-out/*.sha256
+            dist/*.zip
+            dist/*.exe
+            dist/*.sha256
           if-no-files-found: error
 
-  # ---------------------------------------------------------------------------
-  # Collect everything, build a combined SHA256SUMS, publish the release.
-  # ---------------------------------------------------------------------------
   release:
     name: publish release
-    needs: [build, installer]
+    needs: build
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     steps:
@@ -231,12 +139,7 @@ jobs:
           cd artifacts
           SUMS="${BIN_NAME}-$V-SHA256SUMS.txt"
           : > "$SUMS"
-          # Each per-file .sha256 already contains "<hash>  <filename>".
-          for f in *.sha256; do
-            [ "$f" = "$SUMS" ] && continue
-            cat "$f" >> "$SUMS"
-          done
-          echo "----- $SUMS -----"
+          for f in *.sha256; do [ "$f" = "$SUMS" ] && continue; cat "$f" >> "$SUMS"; done
           cat "$SUMS"
 
       - name: Publish GitHub release
@@ -244,8 +147,7 @@ jobs:
         with:
           files: |
             artifacts/*.zip
-            artifacts/*.tar.gz
             artifacts/*.exe
             artifacts/${{ env.BIN_NAME }}-*-SHA256SUMS.txt
           generate_release_notes: true
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false

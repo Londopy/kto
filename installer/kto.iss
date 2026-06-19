@@ -17,6 +17,15 @@
 #ifndef SourceDir
   #define SourceDir "dist"
 #endif
+#ifndef MyArch
+  #define MyArch "x64"
+#endif
+#ifndef ArchAllowed
+  #define ArchAllowed "x64compatible"
+#endif
+#ifndef Arch64
+  #define Arch64 "x64compatible"
+#endif
 
 [Setup]
 ; Keep this AppId constant across releases so upgrades stay clean.
@@ -36,12 +45,12 @@ LicenseFile={#SourceDir}\LICENSE
 ; The installer's own icon (wizard + Add/Remove Programs).
 SetupIconFile={#SourceDir}\icon.ico
 OutputDir=installer-out
-OutputBaseFilename=kto-{#MyAppVersion}-setup-x64
+OutputBaseFilename=kto-{#MyAppVersion}-setup-{#MyArch}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed={#ArchAllowed}
+ArchitecturesInstallIn64BitMode={#Arch64}
 ChangesEnvironment=yes
 UninstallDisplayIcon={app}\{#MyAppExeName}
 UninstallDisplayName={#MyAppName} {#MyAppVersion}

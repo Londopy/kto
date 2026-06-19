@@ -10,9 +10,19 @@
     ],
     "architecture": {
         "64bit": {
-            "url": "https://github.com/Londopy/kto/releases/download/v3.0.0/kto-3.0.0-x86_64-pc-windows-msvc.zip",
-            "hash": "0000000000000000000000000000000000000000000000000000000000000000",
-            "extract_dir": "kto-3.0.0-x86_64-pc-windows-msvc"
+            "url": "https://github.com/Londopy/kto/releases/download/v3.0.0/kto-3.0.0-windows-x64.zip",
+            "extract_dir": "kto-3.0.0-windows-x64",
+            "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "32bit": {
+            "url": "https://github.com/Londopy/kto/releases/download/v3.0.0/kto-3.0.0-windows-x86.zip",
+            "extract_dir": "kto-3.0.0-windows-x86",
+            "hash": "0000000000000000000000000000000000000000000000000000000000000000"
+        },
+        "arm64": {
+            "url": "https://github.com/Londopy/kto/releases/download/v3.0.0/kto-3.0.0-windows-arm64.zip",
+            "extract_dir": "kto-3.0.0-windows-arm64",
+            "hash": "0000000000000000000000000000000000000000000000000000000000000000"
         }
     },
     "bin": [
@@ -23,8 +33,16 @@
     "autoupdate": {
         "architecture": {
             "64bit": {
-                "url": "https://github.com/Londopy/kto/releases/download/v$version/kto-$version-x86_64-pc-windows-msvc.zip",
-                "extract_dir": "kto-$version-x86_64-pc-windows-msvc"
+                "url": "https://github.com/Londopy/kto/releases/download/v$version/kto-$version-windows-x64.zip",
+                "extract_dir": "kto-$version-windows-x64"
+            },
+            "32bit": {
+                "url": "https://github.com/Londopy/kto/releases/download/v$version/kto-$version-windows-x86.zip",
+                "extract_dir": "kto-$version-windows-x86"
+            },
+            "arm64": {
+                "url": "https://github.com/Londopy/kto/releases/download/v$version/kto-$version-windows-arm64.zip",
+                "extract_dir": "kto-$version-windows-arm64"
             }
         },
         "hash": {

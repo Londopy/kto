@@ -27,27 +27,28 @@ the full UI/stats/export pipeline without touching a radio.
 
 ## Install
 
-**Windows - installer:** grab `kto-<ver>-setup-x64.exe` from the
-[releases page](https://github.com/Londopy/kto/releases) and run it (adds `kto`
-to your PATH). It also installs **KTO GUI**, a small
-control-panel window (with a "run at Windows startup" toggle) that drives the
-tool. Source is in [`gui-cpp/`](gui-cpp/).
+KTO ships for Windows in three CPU flavours - pick the one for your machine:
 
-**Windows - Scoop:**
+- **x64** - 64-bit Intel or AMD (almost everyone)
+- **x86** - 32-bit Intel or AMD (old machines)
+- **arm64** - Windows on ARM (e.g. Snapdragon / Surface Pro X)
+
+**Installer:** grab `kto-<ver>-setup-<arch>.exe` from the
+[releases page](https://github.com/Londopy/kto/releases) and run it (adds `kto`
+to your PATH). It also installs **KTO GUI**, a small control-panel window (with a
+"run at Windows startup" toggle) that drives the tool. Source is in
+[`gui-cpp/`](gui-cpp/).
+
+**Scoop** (picks the right arch automatically):
 
 ```powershell
 scoop install https://raw.githubusercontent.com/Londopy/kto/main/scoop/kto.json
 ```
 
-**Linux (x64):** download the archive from the releases page,
-verify it, and drop `kto` on your PATH:
+**Zip:** prefer no installer? Download `kto-<ver>-windows-<arch>.zip`, check it
+against `kto-<ver>-SHA256SUMS.txt`, and run `kto.exe` (or `kto-gui.exe`).
 
-```bash
-sha256sum -c kto-<ver>-SHA256SUMS.txt
-tar xzf kto-<ver>-x86_64-unknown-linux-gnu.tar.gz
-```
-
-**macOS / other platforms:** no prebuilt binaries, but the CLI/TUI builds from
+**macOS / Linux / other:** no prebuilt binaries, but the CLI/TUI builds from
 source - install Rust and run `cargo build --release` (the GUI is Windows-only).
 
 Every release ships SHA-256 checksums (`kto-<ver>-SHA256SUMS.txt`). See
