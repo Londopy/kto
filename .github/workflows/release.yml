@@ -139,9 +139,14 @@ jobs:
           for f in *.sha256; do [ "$f" = "$SUMS" ] && continue; cat "$f" >> "$SUMS"; done
           cat "$SUMS"
 
+      - name: Compose release body
+        shell: bash
+        run: python3 scripts/compose_release_body.py "${{ steps.ver.outputs.version }}"
+
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
+          body_path: RELEASE_BODY.md
           files: |
             artifacts/*.zip
             artifacts/*.exe
